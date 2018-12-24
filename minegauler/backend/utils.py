@@ -215,3 +215,75 @@ class Board(Grid):
                     f"{grid[c]}")
         return board
 
+
+
+class SplitCellBoard(Grid):
+    def __init__(self, x_size, y_size):
+        super().__init__(x_size, y_size)
+        for c in self.all_coords:
+            self[c] = SplittableCell()
+
+    def get_nbrs(self, coord, *, include_origin=False):
+        raise NotImplementedError()
+
+    def __repr__(self):
+        return f"<{self.x_size}x{self.y_size} split-cell board>"
+
+    def __str__(self):
+        row_border = '+' + self.x_size * '-------+'
+        lines = [row_border]
+        for row in self:
+            line1 = '|'
+            line2 = '|'
+            line3 = '|'
+            for big_cell in row:
+                #@@@LG Use cell repr (join multiline strings)
+                if big_cell.is_split:
+                    for i in range(big_cell.subcells.x_size):
+                        line1 += ' {:.1} |'.format(
+                            str(big_cell.subcells[(i, 0)].contents))
+                        line2 += '---+'
+                        line3 += ' {:.1} |'.format(
+                            str(big_cell.subcells[(i, 1)].contents))
+                    line1 = line1[:-1] + '|'
+                    line3 = line3[:-1] + '|'
+                else:
+                    line1 += '       |'
+                    line2 += '   {:.1}   |'.format(str(big_cell.contents))
+                    line3 += '       |'
+            lines.extend([line1, line2, line3, row_border])
+
+        return '\n'.join(lines)
+
+
+class Cell:
+    def __init__(self):
+        self.contents = CellUnclicked()
+
+
+class SplittableCell(Cell):
+    def __init__(self):
+        super().__init__()
+        self.is_split = False
+        self.subcells = Grid(2, 2)  #@@@LG property to prevent access when not split
+        for c in self.subcells.all_coords:
+            self.subcells[c] = Cell()
+
+    def __repr__(self):
+        if self.is_split:
+            ret = ("+-------+\n"
+                   "| 2 | 1 |\n"
+                   "|---+---|\n"
+                   "| # | F |\n"
+                   "+-------+")
+        else:
+            ret = ("+-------+\n"
+                   "|       |\n"
+                   "|   {:.1}   |\n"
+                   "|       |\n"
+                   "+-------+").format(str(self.contents))
+
+        return ret
+
+    def split(self):
+        self.is_split = True
