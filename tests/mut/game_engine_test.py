@@ -161,7 +161,7 @@ class TestController:
 
         # Select a cell to start the game.
         ctrlr.select_cell(coord)
-        assert isinstance(ctrlr.board[coord], (CellHit, CellNum))
+        assert isinstance(ctrlr.board[coord], (CellHitMine, CellNum))
         assert ctrlr.mf.is_created
         assert ctrlr.game_state in {GameState.ACTIVE, GameState.LOST}
         assert ctrlr.mines_remaining == ctrlr.opts.mines
@@ -344,7 +344,7 @@ class TestController:
         coord = (3, 0)
         ctrlr.select_cell(coord)
         assert ctrlr.game_state == GameState.LOST
-        assert ctrlr.board[coord] == CellHit(2)
+        assert ctrlr.board[coord] == CellHitMine(2)
 
         # Test first success on a high density board - no room for opening.
         opts = GameOptsStruct(x_size=4, y_size=4, mines=15, per_cell=1,
@@ -363,8 +363,8 @@ class TestController:
             ctrlr.select_cell(coord)
             attempts += 1
             if attempts >= 10:
-                assert ctrlr.board[coord] == CellHit(1)
-            elif ctrlr.board[coord] == CellHit(1):
+                assert ctrlr.board[coord] == CellHitMine(1)
+            elif ctrlr.board[coord] == CellHitMine(1):
                 passed = True
 
     def test_losing(self, frontend1):
@@ -382,7 +382,7 @@ class TestController:
         ])
         self.check_and_reset_callback(
             frontend1,
-            cells={(2, 0): CellMine(1), (3, 0): CellHit(2),
+            cells={(2, 0): CellMine(1), (3, 0): CellHitMine(2),
                    (3, 1): CellMine(1), (1, 4): CellMine(1)},
             game_state=GameState.LOST,
             mines_remaining=ctrlr.opts.mines)

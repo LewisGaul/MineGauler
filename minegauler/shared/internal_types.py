@@ -8,7 +8,7 @@ CellContentsType (class)
     Base class for cell contents types.
 CellMineType (class)
     Base class for cell contents of a mine type.
-CellUnclicked, CellNum, CellMine, CellHit, CellFlag, CellwrongFlag (class)
+CellUnclicked, CellNum, CellMine, CellHitMine, CellFlag, CellwrongFlag (class)
     CellContentsType implementations.
 
 GameState (Enum)
@@ -115,7 +115,7 @@ class CellMineType(CellContentsType):
         Return:
             The cell contents class.
         """
-        for cls in [CellMine, CellHit, CellFlag, CellWrongFlag]:
+        for cls in [CellMine, CellHitMine, CellFlag, CellWrongFlag]:
             if cls.char == char:
                 return cls
 
@@ -125,7 +125,7 @@ class CellMine(CellMineType):
     """
     char = 'M'
 
-class CellHit(CellMineType):
+class CellHitMine(CellMineType):
     """
     Number of hit mines in a cell shown on a minesweeper board.
     """

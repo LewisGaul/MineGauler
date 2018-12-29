@@ -8,8 +8,8 @@ Minefield (class)
     A grid initialised with a random number of mines in each cell.
 """
 
-import random as rnd
 import logging
+import random as rnd
 
 from minegauler.backend.utils import Grid, Board
 from minegauler.shared.internal_types import CellNum, CellFlag

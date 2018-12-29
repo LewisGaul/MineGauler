@@ -454,7 +454,7 @@ class Controller(AbstractController):
         """
         if self.mf.cell_contains_mine(coord):
             logger.debug("Mine hit at %s", coord)
-            self._set_cell(coord, CellHit(self.mf[coord]))
+            self._set_cell(coord, CellHitMine(self.mf[coord]))
             self.lives_remaining -= 1
             
             if self.lives_remaining == 0:
@@ -540,7 +540,7 @@ class Controller(AbstractController):
             self.mines_remaining = 0
             for c in self.mf.all_coords:
                 if (self.mf.cell_contains_mine(c) and
-                    type(self.board[c]) is not CellHit):
+                    type(self.board[c]) is not CellHitMine):
                     self._set_cell(c, CellFlag(self.mf[c]))
                     
     # def _split_cell(self, coord):
