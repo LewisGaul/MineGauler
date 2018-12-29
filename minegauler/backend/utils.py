@@ -11,6 +11,7 @@ Board (class)
 """
 
 import logging
+from abc import ABC, abstractmethod
 
 from minegauler.shared.internal_types import *
 
@@ -215,3 +216,88 @@ class Board(Grid):
                     f"{grid[c]}")
         return board
 
+
+
+class GeneralBoard(ABC):
+    def __init__(self):
+        self.cells = set()
+
+    @abstractmethod
+    def get_nbrs(self, id, *, include_origin=False):
+        pass
+
+
+class SplitCellBoard(GeneralBoard):
+    def __init__(self, x_size, y_size):
+        self.x_size, self.y_size = x_size, y_size
+        super().__init__()
+        for i in range(x_size):
+            for j in range(y_size):
+                self.cells.add(SplittableCell())
+
+    def __repr__(self):
+        return f"<{self.x_size}x{self.y_size} split-cell board>"
+
+    def __str__(self):
+        row_border = '+' + self.x_size * '-------+'
+        lines = [row_border]
+        for row in self:
+            line1 = '|'
+            line2 = '|'
+            line3 = '|'
+            for big_cell in row:
+                #@@@LG Use cell repr (join multiline strings)
+                if big_cell.is_split:
+                    for i in range(big_cell.subcells.x_size):
+                        line1 += ' {:.1} |'.format(
+                            str(big_cell.subcells[(i, 0)].contents))
+                        line2 += '---+'
+                        line3 += ' {:.1} |'.format(
+                            str(big_cell.subcells[(i, 1)].contents))
+                    line1 = line1[:-1] + '|'
+                    line3 = line3[:-1] + '|'
+                else:
+                    line1 += '       |'
+                    line2 += '   {:.1}   |'.format(str(big_cell.contents))
+                    line3 += '       |'
+            lines.extend([line1, line2, line3, row_border])
+
+        return '\n'.join(lines)
+
+    def get_nbrs(self, id, *, include_origin=False):
+        raise NotImplementedError()
+
+
+class Cell:
+    count = 0
+    def __init__(self):
+        self.id = __class__.count
+        __class__.count += 1
+        self.contents = CellUnclicked()
+
+    def __repr__(self):
+        return f"|{str(self.contents)}|"
+
+
+class SplittableCell(Cell):
+    def __init__(self):
+        super().__init__()
+        self.subcells = Grid(2, 2)
+        for c in self.subcells.all_coords:
+            self.subcells[c] = Cell()
+
+    # def __repr__(self):
+    #     if self.is_split:
+    #         ret = ("+-------+\n"
+    #                "| 2 | 1 |\n"
+    #                "|---+---|\n"
+    #                "| # | F |\n"
+    #                "+-------+")
+    #     else:
+    #         ret = ("+-------+\n"
+    #                "|       |\n"
+    #                "|   {:.1}   |\n"
+    #                "|       |\n"
+    #                "+-------+").format(str(self.contents))
+    #
+    #     return ret
