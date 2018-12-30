@@ -220,7 +220,7 @@ class Board(Grid):
 
 class GeneralBoard(ABC):
     def __init__(self):
-        self.cells = set()
+        self.cells = {}
 
     @abstractmethod
     def get_nbrs(self, id, *, include_origin=False):
@@ -233,7 +233,8 @@ class SplitCellBoard(GeneralBoard):
         super().__init__()
         for i in range(x_size):
             for j in range(y_size):
-                self.cells.add(SplittableCell())
+                cell = SplittableCell()
+                self.cells[cell.id] = cell
 
     def __repr__(self):
         return f"<{self.x_size}x{self.y_size} split-cell board>"
@@ -282,6 +283,7 @@ class Cell:
 class SplittableCell(Cell):
     def __init__(self):
         super().__init__()
+        self.is_split = False
         self.subcells = Grid(2, 2)
         for c in self.subcells.all_coords:
             self.subcells[c] = Cell()
@@ -301,3 +303,12 @@ class SplittableCell(Cell):
     #                "+-------+").format(str(self.contents))
     #
     #     return ret
+
+    def __getitem__(self, key):
+        if self.is_split:
+            return self.subcells.__getitem__(key)
+        return super().__getitem__(key)
+
+    def split(self):
+        self.is_split = True
+        self.contents = self.subcells
