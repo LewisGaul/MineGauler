@@ -14,7 +14,7 @@ __all__ = ("BaseController", "CreateController", "GameController")
 import json
 import logging
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 import attr
 
@@ -155,18 +155,21 @@ class BaseController(api.AbstractSwitchingController):
     def save_current_minefield(self, file: os.PathLike) -> None:
         self._active_ctrlr.save_current_minefield(file)
 
-    def load_minefield(self, file: os.PathLike) -> None:
-        with open(file) as f:
-            mf = brd.Minefield.from_json(json.load(f))
+    def load_minefield(self, mf_or_file: Union[os.PathLike, brd.Minefield]) -> None:
+        if isinstance(mf_or_file, brd.Minefield):
+            mf = mf_or_file
+        else:
+            with open(mf_or_file) as f:
+                mf = brd.Minefield.from_json(json.load(f))
         self._opts.x_size = mf.x_size
         self._opts.y_size = mf.y_size
         self._opts.mines = mf.nr_mines
 
         if self._mode is UIMode.CREATE:
-            self.switch_mode(UIMode.GAME, minefield_file=file)
+            self.switch_mode(UIMode.GAME, minefield=mf)
             self._notif.switch_mode(UIMode.GAME)
         else:
-            self._active_ctrlr.load_minefield(file)
+            self._active_ctrlr.load_minefield(mf)
 
 
 class GameController(api.AbstractController):
@@ -184,16 +187,15 @@ class GameController(api.AbstractController):
         opts: utils.GameOptsStruct,
         *,
         notif: Optional[api.Caller] = None,
-        minefield_file: Optional[os.PathLike] = None,
+        minefield: Optional[Union[os.PathLike, brd.Minefield]] = None,
     ):
         """
         :param opts:
             Game options.
         :param notif:
             Optionally provide a notifier defining callbacks.
-        :param minefield_file:
-            Optionally provide a path to a minefield file to create the initial
-            game from.
+        :param minefield:
+            Optionally provide minefield to create the initial game from.
         """
         super().__init__(opts, notif=notif)
 
@@ -203,8 +205,8 @@ class GameController(api.AbstractController):
         self._last_update: _SharedInfo = _SharedInfo()
         self._notif.update_game_state(GameState.READY)
         self._notif.set_mines(self._opts.mines)
-        if minefield_file:
-            self.load_minefield(minefield_file)
+        if minefield:
+            self.load_minefield(minefield)
         else:
             self.new_game()
 
@@ -371,16 +373,19 @@ class GameController(api.AbstractController):
             return
         _save_minefield(self._game.mf, file)
 
-    def load_minefield(self, file: os.PathLike) -> None:
+    def load_minefield(self, mf_or_file: Union[os.PathLike, brd.Minefield]) -> None:
         """
-        Load a minefield from file.
+        Load a minefield, either from file or directly.
 
-        :param file:
-            The location of the file to load from. Should have the extension
-            ".mgb".
+        :param mf_or_file:
+            Either the location of the file to load from (with extension ".mgb")
+            or the minefield to load.
         """
-        with open(file) as f:
-            mf = brd.Minefield.from_json(json.load(f))
+        if isinstance(mf_or_file, brd.Minefield):
+            mf = mf_or_file
+        else:
+            with open(mf_or_file) as f:
+                mf = brd.Minefield.from_json(json.load(f))
 
         self._opts.x_size = mf.x_size
         self._opts.y_size = mf.y_size
@@ -572,5 +577,5 @@ class CreateController(api.AbstractController):
         mf = brd.Minefield.from_grid(mines_grid, per_cell=self._opts.per_cell)
         _save_minefield(mf, file)
 
-    def load_minefield(self, file: os.PathLike) -> None:
+    def load_minefield(self, mf_or_file: Union[os.PathLike, brd.Minefield]) -> None:
         return NotImplemented

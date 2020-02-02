@@ -4,27 +4,9 @@ utils.py - General test utils
 December 2019, Lewis Gaul
 """
 
-import contextlib
-from typing import Iterable
+__all__ = ("make_true_mock",)
+
 from unittest import mock
-
-
-@contextlib.contextmanager
-def activate_patches(patches: Iterable[mock._patch]):
-    """
-    Context manager to activate multiple mock patches.
-
-    :param patches:
-        Patches to start and stop.
-    """
-    mocks = []
-    for patch in patches:
-        mocks.append(patch.start())
-    try:
-        yield tuple(mocks)
-    finally:
-        for patch in patches:
-            patch.stop()
 
 
 def make_true_mock(cls: type) -> type:

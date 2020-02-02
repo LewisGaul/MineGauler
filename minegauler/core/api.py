@@ -18,7 +18,7 @@ __all__ = (
 import abc
 import logging
 import os
-from typing import Callable, Dict, Iterable, List, Optional
+from typing import Callable, Dict, Iterable, List, Optional, Union
 
 import attr
 
@@ -448,15 +448,15 @@ class AbstractController(metaclass=abc.ABCMeta):
         self._logger.debug("Saving current minefield to file: %s", file)
 
     @abc.abstractmethod
-    def load_minefield(self, file: os.PathLike) -> None:
+    def load_minefield(self, mf_or_file: Union[os.PathLike, brd.Minefield]) -> None:
         """
-        Load a minefield from file.
+        Load a minefield, either from file or directly.
 
-        :param file:
-            The location of the file to load from. Should have the extension
-            ".mgb".
+        :param mf_or_file:
+            Either the location of the file to load from (with extension ".mgb")
+            or the minefield to load.
         """
-        self._logger.debug("Loading minefield from file: %s", file)
+        self._logger.debug("Loading minefield: %s", mf_or_file)
 
 
 class AbstractSwitchingController(AbstractController):
