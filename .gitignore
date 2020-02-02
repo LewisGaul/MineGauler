@@ -15,6 +15,7 @@ coverage*.xml
 *,cover
 htmlcov/
 .pytest*
+.benchmarks/
 
 # Editor-related
 .idea/
