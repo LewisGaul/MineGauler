@@ -1,16 +1,13 @@
 """
-benchmark_test.py - Benchmark tests
+Benchmark tests.
 
 February 2020, Lewis Gaul
-
-Uses pytest-benchmark - simply run 'python -m pytest tests/ [-k benchmark]' from
-the root directory.
 """
 
 from pytest_benchmark.fixture import BenchmarkFixture
 
 from minegauler import core
-from minegauler.types import CellFlag, CellNum
+from minegauler.types import CellContents
 
 from .utils import ITBase
 from .utils import process_events as _utils_process_events
@@ -45,9 +42,9 @@ class TestBenchmarks(ITBase):
             nonlocal checked
             mf = core.board.Minefield(x_size=50, y_size=50, mines=[(1, 0)])
             if not checked:
-                assert mf.completed_board[(0, 0)] == CellNum(1)
-                assert mf.completed_board[(1, 0)] == CellFlag(1)
-                assert mf.completed_board[(3, 3)] == CellNum(0)
+                assert mf.completed_board[(0, 0)] == CellContents.Num(1)
+                assert mf.completed_board[(1, 0)] == CellContents.Flag(1)
+                assert mf.completed_board[(3, 3)] == CellContents.Num(0)
                 checked = True
             self.ctrlr.load_minefield(mf)
 
@@ -61,8 +58,8 @@ class TestBenchmarks(ITBase):
             nonlocal checked
             mf = core.board.Minefield(x_size=2, y_size=1, mines=[(1, 0)])
             if not checked:
-                assert mf.completed_board[(0, 0)] == CellNum(1)
-                assert mf.completed_board[(1, 0)] == CellFlag(1)
+                assert mf.completed_board[(0, 0)] == CellContents.Num(1)
+                assert mf.completed_board[(1, 0)] == CellContents.Flag(1)
                 checked = True
             self.ctrlr.load_minefield(mf)
 
@@ -76,8 +73,8 @@ class TestBenchmarks(ITBase):
             nonlocal checked
             mf = core.board.Minefield(x_size=2, y_size=1, mines=[(1, 0)])
             if not checked:
-                assert mf.completed_board[(0, 0)] == CellNum(1)
-                assert mf.completed_board[(1, 0)] == CellFlag(1)
+                assert mf.completed_board[(0, 0)] == CellContents.Num(1)
+                assert mf.completed_board[(1, 0)] == CellContents.Flag(1)
                 checked = True
             self.ctrlr.load_minefield(mf)
 

@@ -1,5 +1,5 @@
 """
-utils.py - Utils for the IT
+Utilities for the IT.
 
 February 2020, Lewis Gaul
 """
@@ -14,9 +14,10 @@ from types import ModuleType
 from unittest import mock
 
 from PyQt5.QtWidgets import QApplication
-from tests.utils import activate_patches
 
 from minegauler import core, frontend
+
+from ..utils import activate_patches
 
 
 logger = logging.getLogger(__name__)
