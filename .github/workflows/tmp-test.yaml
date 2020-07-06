@@ -1,0 +1,38 @@
+name: Workflow for testing artefact deletion
+
+on:
+  push:
+
+jobs:
+  create:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+
+    steps:
+      - run: |
+          mkdir artefacts
+          echo "hello" > artefacts/${{matrix.os}}.txt
+
+      - name: Store artefacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.os }}
+          path: artefacts/
+
+#  cleanup:
+#    runs-on: ubuntu-latest
+#    needs: create
+#    if: always()
+#    steps:
+#      - name: Delete artefacts shared between jobs
+#        uses: geekyeggo/delete-artifact@v1
+#        with:
+#          name: |
+#            ubuntu-latest
+#            macOS-latest
+#            windows-latest
+#          failOnError: false
