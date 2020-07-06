@@ -32,4 +32,5 @@ jobs:
         uses: geekyeggo/delete-artifact@1-glob-support
         with:
           name: "*-latest"
+          useGlob: true
           failOnError: false
