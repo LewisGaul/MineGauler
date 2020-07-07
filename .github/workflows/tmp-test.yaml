@@ -29,7 +29,8 @@ jobs:
     if: always()
     steps:
       - name: Delete artefacts shared between jobs
-        uses: geekyeggo/delete-artifact@v1
+        uses: geekyeggo/delete-artifact@1-glob-support
         with:
-          name: "*"
+          name: "*-foo"
           failOnError: false
+          useGlob: true
