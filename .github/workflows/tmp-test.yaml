@@ -31,6 +31,6 @@ jobs:
       - name: Delete artefacts shared between jobs
         uses: geekyeggo/delete-artifact@1-glob-support
         with:
-          name: "*-foo"
+          name: "*-latest"
           failOnError: false
-          useGlob: true
+          #useGlob: true
