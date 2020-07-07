@@ -31,5 +31,5 @@ jobs:
       - name: Delete artefacts shared between jobs
         uses: geekyeggo/delete-artifact@v1
         with:
-          name: "*-latest"
+          name: "*"
           failOnError: false
