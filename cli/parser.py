@@ -19,8 +19,8 @@ from typing import Dict, List, Optional
 class _CommonFieldsMixin:
     """Mixin to provide handling for common schema fields."""
 
-    _help: str
-    _command: Optional[str] = None
+    # type: _help: str
+    _command = None  # type: Optional[str]
 
     @property
     def help(self) -> str:
@@ -46,10 +46,10 @@ class _CommonFieldsMixin:
 class Arg(_CommonFieldsMixin):
     """Schema arg."""
 
-    _name: str
-    _positional: bool = False
-    _type: typing.Type = str
-    _enum: Optional[List[str]] = None
+    # type: _name: str
+    _positional = False  # type: bool
+    _type = str  # type: typing.Type
+    _enum = None  # type: Optional[List[str]]
 
     def __init__(self, obj: Dict[str, typing.Any]):
         required_fields = {"name", "help"}
@@ -107,10 +107,10 @@ class Arg(_CommonFieldsMixin):
 class _NodeBase(_CommonFieldsMixin):
     """Base class for nodes."""
 
-    _keyword: Optional[str]
-    _subtree: List["_NodeBase"]
-    _args: List[Arg]
-    parent: Optional["_NodeBase"]
+    # type: _keyword: Optional[str]
+    # type: _subtree: List["_NodeBase"]
+    # type: _args: List[Arg]
+    # type: parent: Optional["_NodeBase"]
 
     def __init__(self, obj: Dict[str, typing.Any]):
         required_fields = {"help"}
@@ -155,7 +155,7 @@ class _NodeBase(_CommonFieldsMixin):
 class RootNode(_NodeBase):
     """Root schema node."""
 
-    parent: None = None
+    parent = None  # type: None
 
     def __repr__(self):
         return "<RootNode>"
@@ -164,8 +164,8 @@ class RootNode(_NodeBase):
 class SubNode(_NodeBase):
     """Sub schema node."""
 
-    _keyword: str
-    parent: _NodeBase
+    # type: _keyword: str
+    # type: parent: _NodeBase
 
     def __init__(self, obj: Dict[str, typing.Any]):
         required_fields = {"help", "keyword"}

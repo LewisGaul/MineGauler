@@ -6,8 +6,15 @@ command: "run"
 
 subtree:
   - keyword: venv
-    help: "Virtual environment commands"
+    help: "Set up the project's virtual environment"
     command: "make-venv"
+    args:
+      - name: check
+        help: "Just check whether the venv is set up correctly"
+        type: flag
+      - name: dev
+        help: "Include developer requirements, e.g. for running tests"
+        type: flag
 
   - keyword: tests
     help: "Run tests"

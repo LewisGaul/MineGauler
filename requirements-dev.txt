@@ -2,7 +2,7 @@
 
 appdirs==1.4.3
 black==19.10b0
-bump2version==0.6.0
+bump2version==0.5.11
 Click==7.0
 coverage==5.0.1
 Flask==1.1.1
