@@ -224,6 +224,11 @@ class CLIParser:
         while node.subtree and remaining_args:
             arg = remaining_args[0]
             if arg in ["-h", "--help"]:
+                # TODO: Not sure how best to handle a 'help' arg:
+                #   - Accept anywhere or only after the last given keyword
+                #   - Treat as help for last given node, or for the node it
+                #     appears directly after (break here instead of continue)
+                #  Currently accepted anywhere and enacted on last given node.
                 show_help = True
                 remaining_args.pop(0)
                 continue
