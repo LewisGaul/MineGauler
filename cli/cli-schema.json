@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "CLI schema",
+  "description": "Schema for CLI YAML definition.",
+
+  "definitions": {
+    "subnode": {
+      "allOf": [
+        {
+          "required": ["keyword"],
+          "properties": {
+            "keyword": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "$comment": "Include the root node schema",
+          "$ref": "#"
+        }
+      ]
+    },
+    "arg": {
+      "type": "object",
+      "required": ["name", "help"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "help": {
+          "type": "string"
+        },
+        "type": {
+          "$id": "arg-type",
+          "type": "string",
+          "enum": ["string", "integer", "float", "flag", "text"],
+          "default": "string"
+        },
+        "positional": {
+          "type": "boolean"
+        },
+        "default": {
+          "description": "Must match the type of the arg",
+          "oneOf": [
+            {"type": "string"},
+            {"type": "number"},
+            {"type": "boolean"}
+          ]
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "required": ["help"],
+  "properties": {
+    "help": {
+      "type": "string"
+    },
+    "command": {
+      "type": "string"
+    },
+    "args": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/arg"}
+    },
+    "subtree": {
+      "type": "array",
+      "title": "The subtree schema",
+      "items": {"$ref": "#/definitions/subnode"}
+    }
+  },
+  "additionalProperties": false
+}
