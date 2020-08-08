@@ -5,6 +5,9 @@ CLI entry-point.
 
 """
 
+# Note: Must remain compatible with Python 3.5 so that the CLI can operate
+# and report sensible errors (i.e. advise that Python 3.6+ is required).
+
 import logging
 import os
 import pathlib
@@ -43,6 +46,18 @@ class UserFacingError(Exception):
 
 
 def _is_version_at_least(version: str, major: int, minor: Optional[int] = None) -> bool:
+    """
+    Check that a given version meets the minimum requirements.
+
+    :param version:
+        Version string in the form "<major>.<minor>[.<more>]"
+    :param major:
+        Major version requirement.
+    :param minor:
+        Minor version requirement, if any.
+    :return:
+        Whether the given version is sufficient.
+    """
     parts = version.split(".", maxsplit=3)
     if int(parts[0]) < major:
         return False
@@ -55,6 +70,7 @@ def _find_venv_python(path: PathLike) -> str:
     """Look for python executable in venv."""
     path = pathlib.Path(path)
     if path.is_dir():
+        # @@@ Should probably actually check based on platform.
         for exe_paths in ["bin/python", "Scripts/python.exe"]:
             if (path / exe_paths).is_file():
                 path /= exe_paths
@@ -81,9 +97,10 @@ def _check_python_capabilities(location: Optional[PathLike] = None) -> Optional[
     """
     if location is None:
         # Check version (3.6+ required).
-        if not _is_version_at_least(sys.version, 3, 6):
+        version = "{v.major}.{v.minor}.{v.micro}".format(v=sys.version_info)
+        if not _is_version_at_least(version, 3, 6):
             raise UserFacingError(
-                "Python3.6+ required, detected {}".format(sys.version)
+                "Python version 3.6+ required, detected {}".format(version)
             )
         # Check venv capability.
         try:
