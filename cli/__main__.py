@@ -350,6 +350,7 @@ def run_tests(args):
         sp.run([str(python_exe), "-m", "pytest", "-h"])
     else:
         sp.run([str(python_exe), "-m", "pytest"] + args.remaining_args)
+        # TODO: Should be passing back the exit code.
 
 
 def run_bot_cli(args):
