@@ -7,7 +7,6 @@ Bot package.
 
 __all__ = ("init_route_handling",)
 
-import json
 import logging
 import os
 import sys

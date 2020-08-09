@@ -9,13 +9,13 @@ CLI entry-point.
 # and report sensible errors (i.e. advise that Python 3.6+ is required).
 
 import logging
-import os
 import pathlib
 import re
 import subprocess as sp
 import sys
 import traceback
-from typing import Optional, Union
+import venv
+from typing import Iterable, Optional, Union
 
 # Any 3rd-party dependencies must be kept in bootstrap/.
 import yaml
@@ -40,9 +40,34 @@ PathLike = Union[str, pathlib.Path]
 class UserFacingError(Exception):
     """An error with a representation that may be shown to the user."""
 
-    def __init__(self, user_msg: str, exit_code: int = 1):
-        super().__init__(user_msg)
+    def __init__(self, msg: Optional[str] = None, *, user_msg: str, exit_code: int = 1):
+        super().__init__(msg if msg else user_msg)
+        self.user_msg = user_msg
         self.exit_code = exit_code
+
+
+class NoVenvError(UserFacingError):
+    """Virtualenv does not yet exist."""
+
+    def __init__(self):
+        super().__init__(
+            user_msg="Virtual environment has not yet been set up, try running "
+            "'python run.py venv'"
+        )
+
+
+class NoVenvPipError(UserFacingError):
+    """Virtualenv does not have pip installed properly."""
+
+
+class MissingReqsError(UserFacingError):
+    """Requirements are missing."""
+
+    def __init__(self, missing: Iterable[str]):
+        super().__init__(
+            "The following requirements were not found: " + ", ".join(missing),
+            user_msg="Not all requirements are installed",
+        )
 
 
 def _is_version_at_least(version: str, major: int, minor: Optional[int] = None) -> bool:
@@ -66,59 +91,54 @@ def _is_version_at_least(version: str, major: int, minor: Optional[int] = None) 
     return True
 
 
-def _find_venv_python(path: PathLike) -> str:
-    """Look for python executable in venv."""
+def _find_venv_exe(path: PathLike, exe: str) -> pathlib.Path:
+    """Look for executable in a venv."""
     path = pathlib.Path(path)
-    if path.is_dir():
-        # @@@ Should probably actually check based on platform.
-        for exe_paths in ["bin/python", "Scripts/python.exe"]:
-            if (path / exe_paths).is_file():
-                path /= exe_paths
-                break
-    if not path.is_file():
-        raise FileNotFoundError("Python executable not found at %s", path)
-    return str(path)
+    if sys.platform.startswith("win"):
+        if not exe.endswith(".exe"):
+            exe += ".exe"
+        full_path = path / "Scripts" / exe
+    else:
+        full_path = path / "bin" / exe
+    if not full_path.is_file():
+        raise FileNotFoundError("Executable not found at {}".format(full_path))
+    return full_path
 
 
-def _check_python_capabilities(location: Optional[PathLike] = None) -> Optional[str]:
+def _check_python_capabilities(location: Optional[PathLike] = None):
     """
     Check the basic Python capabilities (version and stdlib modules).
 
     :param location:
-        The path to a virtualenv directory or python executable to check, or
-        None to check the one in use.
+        The path to a virtualenv directory or None to check the Python in use.
     :raises FileNotFoundError:
-        If a Python executable can't be found at the given location.
+        If a Python executable can't be found in the venv.
+    :raises NoVenvPipError:
+        If pip is missing from venv.
     :raises UserFacingError:
         If the Python capabilities are insufficient.
-    :return:
-        If 'location' was given, the path to the python executable is returned,
-        otherwise None.
     """
+    # TODO: This should be broken up into two functions.
     if location is None:
         # Check version (3.6+ required).
         version = "{v.major}.{v.minor}.{v.micro}".format(v=sys.version_info)
         if not _is_version_at_least(version, 3, 6):
             raise UserFacingError(
-                "Python version 3.6+ required, detected {}".format(version)
+                user_msg="Python version 3.6+ required, detected {}".format(version)
             )
-        # Check venv capability.
         try:
-            import venv
-        except ImportError:
+            import ensurepip
+        except ImportError as e:
             raise UserFacingError(
-                "The standard library 'venv' module could not be found"
-            )
+                user_msg="Module 'ensurepip' not found, try running 'deactivate'"
+            ) from e
         return
     else:
-        if os.path.isfile(location):
-            python_exe = str(location)
-        else:
-            python_exe = _find_venv_python(location)
+        python_exe = _find_venv_exe(location, "python")
         # Check venv Python version.
         try:
             proc = sp.run(
-                [python_exe, "--version"],
+                [str(python_exe), "--version"],
                 stdout=sp.PIPE,
                 stderr=sp.PIPE,
                 universal_newlines=True,
@@ -127,55 +147,116 @@ def _check_python_capabilities(location: Optional[PathLike] = None) -> Optional[
             )
             version = re.match(r"Python (\d\.\d+\.\d+\S*)", proc.stdout).group(1)
         except (sp.CalledProcessError, sp.TimeoutExpired):
-            raise UserFacingError("Unable to determine Python version")
+            raise UserFacingError(user_msg="Unable to determine Python version")
         except AttributeError:
             logger.debug(
                 "Unexpected output from '%s --version':\n%s", python_exe, proc.output
             )
-            raise UserFacingError("Unable to determine Python version")
+            raise UserFacingError(user_msg="Unable to determine Python version")
         else:
             if not _is_version_at_least(version, 3, 6):
                 raise UserFacingError(
-                    "Python3.6+ required, detected {}".format(version)
+                    user_msg="Python3.6+ required, detected {}".format(version)
                 )
+        # Check pip is available.
         try:
+            pip_exe = _find_venv_exe(location, "pip")
             sp.run(
-                [python_exe, "-m", "pip", "--version"],
+                [str(pip_exe), "--version"],
                 stdout=sp.PIPE,
                 stderr=sp.PIPE,
                 universal_newlines=True,
                 check=True,
                 timeout=3,
             )
-        except (sp.CalledProcessError, sp.TimeoutExpired):
-            raise UserFacingError("Pip doesn't seem to be available")
-        return python_exe
+        except (FileNotFoundError, sp.CalledProcessError, sp.TimeoutExpired) as e:
+            raise NoVenvPipError(
+                user_msg="Pip doesn't seem to be installed into the virtual "
+                "environment properly"
+            ) from e
 
 
-def _check_venv(path: PathLike) -> str:
+def _check_requirements(python_exe: PathLike, *, dev: bool = False):
+    """
+    Check the installed requirements satisfy the project requirements.
+
+    :param python_exe:
+        The path to the python executable.
+    :param dev:
+        Whether to include developer requirements.
+    :raises UserFacingError:
+        If anything goes wrong.
+    :raises MissingReqsError:
+        If the requirements aren't satisfied.
+    """
+    try:
+        proc = sp.run(
+            [str(python_exe), "-m", "pip", "freeze", "--all"],
+            stdout=sp.PIPE,
+            stderr=sp.PIPE,
+            check=True,
+            universal_newlines=True,
+            timeout=5,
+        )
+        installed = {
+            tuple(L.lower().strip().split("==")) for L in proc.stdout.splitlines()
+        }
+    except Exception as e:
+        raise UserFacingError(user_msg="Error checking installed packages") from e
+
+    if dev:
+        req_path = _PROJECT_DIR / "requirements-dev.txt"
+        # TODO: Should also be checking main project reqs.
+    else:
+        req_path = _PROJECT_DIR / "requirements.txt"
+    try:
+        with open(req_path) as f:
+            lines = {
+                L.lower()
+                for L in f.readlines()
+                if "-r " not in L and L.strip() and not L.strip().startswith("#")
+            }
+        exact_requirements = {
+            tuple(L.strip().split("==")[:2]) for L in lines if "==" in L
+        }
+        free_requirements = {L.strip() for L in lines if "==" not in L}
+    except Exception as e:
+        raise UserFacingError(user_msg="Error reading project requirements") from e
+
+    missing_reqs = {
+        *["==".join(r) for r in exact_requirements - installed],
+        *(free_requirements - {r[0] for r in installed}),
+    }
+    if missing_reqs:
+        raise MissingReqsError(sorted(missing_reqs))
+
+
+def _check_venv(path: PathLike):
     """
     Check the given virtualenv is set up correctly.
 
     :param path:
         Path to virtualenv directory.
-    :return:
-        Path to python executable within the virtualenv.
+    :raises UserFacingError:
+        If anything goes wrong.
+    :raises NoVenvError:
+        If the virtualenv doesn't exist.
     """
     path = pathlib.Path(path)
     if not path.exists():
-        raise FileNotFoundError("venv directory not found")
+        raise NoVenvError()
     try:
-        python_exe = _check_python_capabilities(path)
+        _check_python_capabilities(path)
     except FileNotFoundError:
         raise UserFacingError(
-            "There is already a '.venv' directory which doesn't seem to be "
+            user_msg="There is already a '.venv' directory which doesn't seem to be "
             "a virtual environment. Can it be moved/deleted?"
         )
     except UserFacingError as e:
         raise UserFacingError(
-            "There is a problem with the existing virtual environment: " + str(e)
+            user_msg="There is a problem with the existing virtual environment: "
+            + e.user_msg
         )
-    return python_exe
 
 
 # ------------------------------------------------------------------------------
@@ -184,67 +265,96 @@ def _check_venv(path: PathLike) -> str:
 
 
 def run_app(args):
-    python_exe = _find_venv_python(_VENV_DIR)
-    print(python_exe)
-    # @@@ Check venv.
-    sp.run([python_exe, "-m", "minegauler"])
+    _check_venv(_VENV_DIR)
+    python_exe = _find_venv_exe(_VENV_DIR, "python")
+    _check_requirements(python_exe)
+    sp.run(
+        [str(python_exe), "-m", "minegauler"], stdout=sp.PIPE, stderr=sp.PIPE,
+    )
 
 
 def make_venv(args):
+    """Create or update the project virtualenv."""
+    # TODO: Need some way to handle this being run from within a venv... In
+    #  this case ensurepip is generally not available, but this check alone
+    #  is not sufficient. What's more, the venv could be already created with
+    #  a dodgy ability to access the parent venv's pip...
+
     print("INFO: Checking Python capabilities...")
     _check_python_capabilities()
 
-    try:
-        python_exe = _check_venv(_VENV_DIR)
-        print("INFO: Found existing virtual environment")
-    except FileNotFoundError:
-        print("INFO: Creating virtual environment...")
-        # Create venv.
-        import venv
+    if args.check:
+        try:
+            python_exe = _find_venv_exe(_VENV_DIR, "python")
+        except FileNotFoundError:
+            raise NoVenvError()
+        _check_requirements(python_exe, dev=args.dev)
+        print("Requirements satisfied!")
+        return
 
+    # Create venv if it doesn't exist yet.
+    try:
+        _check_venv(_VENV_DIR)
+        print("INFO: Found existing virtual environment")
+    except NoVenvError:
+        print("INFO: Creating virtual environment...")
         venv.create(_VENV_DIR, with_pip=True)
-        python_exe = _check_venv(_VENV_DIR)
+        _check_venv(_VENV_DIR)
         print("INFO: Virtual environment successfully created")
 
-    # Check requirements are satisfied, do pip install.
-    if args.check:
-        raise UserFacingError("The 'check' flag is not yet implemented")
+    # Do pip install.
+    print("INFO: Checking for pip updates...")
+    pip_exe = _find_venv_exe(_VENV_DIR, "pip")
+    try:
+        sp.run(
+            [str(pip_exe), "install", "-U", "pip"],
+            stdout=sp.PIPE,
+            stderr=sp.PIPE,
+            check=True,
+        )
+        print("INFO: pip update check was successful")
+    except sp.CalledProcessError:
+        raise UserFacingError(user_msg="Error checking for pip update")
+    if args.dev:
+        req_file = _PROJECT_DIR / "requirements-dev.txt"
+        req_type = "developer"
     else:
-        if args.dev:
-            req_file = _PROJECT_DIR / "requirements-dev.txt"
-        else:
-            req_file = _PROJECT_DIR / "requirements.txt"
-        print("INFO: Installing project requirements...")
-        try:
-            sp.run(
-                [python_exe, "-m", "pip", "install", "-r", str(req_file)],
-                stdout=sp.PIPE,
-                stderr=sp.PIPE,
-                universal_newlines=True,
-                check=True,
-            )
-            print("INFO: Project requirements successfully installed")
-        except sp.CalledProcessError:
-            raise UserFacingError("Error installing project requirements")
+        req_file = _PROJECT_DIR / "requirements.txt"
+        req_type = "project"
+    print("INFO: Installing {} requirements...".format(req_type))
+    try:
+        sp.run(
+            [str(pip_exe), "install", "-r", str(req_file)],
+            stdout=sp.PIPE,
+            stderr=sp.PIPE,
+            check=True,
+        )
+        print(
+            "INFO: {} requirements successfully installed".format(req_type.capitalize())
+        )
+    except sp.CalledProcessError:
+        raise UserFacingError(user_msg="Error installing project requirements")
 
 
 def run_tests(args):
-    # TODO: Use the venv python.
+    # TODO: Need a generic way to ensure using a suitable Python executable.
+    _check_venv(_VENV_DIR)
+    python_exe = _find_venv_exe(_VENV_DIR, "python")
+    _check_requirements(python_exe, dev=True)
     # The double dash can be used to pass args through to pytest.
     try:
         args.remaining_args.remove("--")
     except ValueError:
         pass
     if args.pytest_help:
-        sp.run(["python", "-m", "pytest", "-h"])
+        sp.run([str(python_exe), "-m", "pytest", "-h"])
     else:
-        sp.run(["python", "-m", "pytest"] + args.remaining_args)
+        sp.run([str(python_exe), "-m", "pytest"] + args.remaining_args)
 
 
 def run_bot_cli(args):
-    import bot
-
-    bot.utils.read_users_file()
+    # TODO: Should check/handle requirements.
+    import bot.msgparse
 
     try:
         args.remaining_args.remove("--")
@@ -254,6 +364,7 @@ def run_bot_cli(args):
 
 
 def add_bot_player(args):
+    # TODO: Should check/handle requirements.
     import bot.utils
 
     bot.utils.read_users_file()
@@ -261,6 +372,7 @@ def add_bot_player(args):
 
 
 def remove_bot_player(args):
+    # TODO: Should check/handle requirements.
     import bot.utils
 
     bot.utils.read_users_file()
@@ -284,6 +396,11 @@ _COMMANDS = {
 # ------------------------------------------------------------------------------
 
 
+def _save_error_to_file(exc: Exception):
+    with open(".last_error.txt", "w") as f:
+        traceback.print_exception(None, exc, exc.__traceback__, file=f)
+
+
 def main(argv) -> int:
     # Load the CLI schema.
     with open(str(_THIS_DIR / "cli.yaml")) as f:
@@ -295,20 +412,22 @@ def main(argv) -> int:
     logger.debug("Got args:", args)
 
     # Run the command!
+    exit_code = 0
     try:
         _COMMANDS[args.command](args)
-        return 0
     except UserFacingError as e:
-        print("ERROR:", e, file=sys.stderr)
-        return e.exit_code
+        print("ERROR:", e.user_msg, file=sys.stderr)
+        _save_error_to_file(e)
+        exit_code = e.exit_code
     except Exception as e:
         print(
             "ERROR: Unexpected error, please contact the maintainer to sort this out!",
             file=sys.stderr,
         )
-        with open(".last_error.txt", "w") as f:
-            traceback.print_exception(None, e, e.__traceback__, file=f)
-        return 1
+        _save_error_to_file(e)
+        exit_code = 1
+
+    return exit_code
 
 
 if __name__ == "__main__":

@@ -796,6 +796,7 @@ def parse_msg(
 
 
 def main(argv):
+    utils.read_users_file()
     try:
         # TODO: Need to not join argv, since player names can contain spaces.
         resp = parse_msg(" ".join(argv), RoomType.DIRECT, username="dummy-user")

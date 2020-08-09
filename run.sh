@@ -1,3 +1,9 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
-PYTHONPATH='bootstrap' python3 -m cli "$@"
+if [[ -f .venv/bin/python ]]; then
+  PYTHON_EXE=.venv/bin/python
+else
+  PYTHON_EXE=python3
+fi
+
+PYTHONPATH='bootstrap' "$PYTHON_EXE" -m cli "$@"
