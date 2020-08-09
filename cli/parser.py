@@ -16,75 +16,37 @@ from typing import Dict, List, Optional
 # ------------------------------------------------------------------------------
 
 
-class _CommonFieldsMixin:
-    """Mixin to provide handling for common schema fields."""
-
-    # type: _help: str
-    _command = None  # type: Optional[str]
-
-    @property
-    def help(self) -> str:
-        return self._help
-
-    @help.setter
-    def help(self, value: str):
-        if type(value) is not str:
-            raise ValueError("The help string is required")
-        self._help = value
-
-    @property
-    def command(self) -> Optional[str]:
-        return self._command
-
-    @command.setter
-    def command(self, value: Optional[str]):
-        if value is not None and type(value) is not str:
-            raise ValueError("Command should be a string if set")
-        self._command = value
-
-
-class Arg(_CommonFieldsMixin):
+class Arg:
     """Schema arg."""
 
-    # type: _name: str
-    _positional = False  # type: bool
-    _type = str  # type: typing.Type
-    _enum = None  # type: Optional[List[str]]
+    def __init__(
+        self,
+        *,
+        name: str,
+        help_: str,
+        command: Optional[str] = None,
+        positional: bool = False,
+        type_: typing.Type = str,
+        enum: Optional[List] = None,
+        default: Optional = None,
+    ):
+        self.name = name
+        self.help = help_
+        self.command = command
+        self.positional = positional
+        self.type = type_
+        self.enum = enum
+        self.default = default
 
-    def __init__(self, obj: Dict[str, typing.Any]):
-        required_fields = {"name", "help"}
-        missing_fields = required_fields - set(obj)
-        if missing_fields:
-            raise ValueError("Missing fields: {}".format(", ".join(missing_fields)))
-        for k, v in obj.items():
-            setattr(self, k, v)
+    @classmethod
+    def from_dict(cls, data: Dict[str, typing.Any]) -> "Arg":
+        kwargs = data.copy()
+        kwargs["help_"] = kwargs.pop("help")
+        kwargs["type_"] = cls._process_type_field(kwargs.pop("type", "string"))
+        return cls(**kwargs)
 
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @name.setter
-    def name(self, value: str):
-        if type(value) is not str:
-            raise ValueError("Name is required and should be a string")
-        self._name = value
-
-    @property
-    def positional(self) -> bool:
-        return self._positional
-
-    @positional.setter
-    def positional(self, value: bool):
-        if type(value) is not bool:
-            raise ValueError("Positional should be a boolean")
-        self._positional = value
-
-    @property
-    def type(self) -> typing.Type:
-        return self._type
-
-    @type.setter
-    def type(self, value: str):
+    @staticmethod
+    def _process_type_field(value: str) -> typing.Type:
         # TODO: 'type' should be an enum rather than a Python type.
         accepted_types = {
             "integer": int,
@@ -101,61 +63,54 @@ class Arg(_CommonFieldsMixin):
                     value, ", ".join(accepted_types)
                 )
             )
-        self._type = value
+        return value
 
 
-class _NodeBase(_CommonFieldsMixin):
+class _NodeBase:
     """Base class for nodes."""
 
-    # type: _keyword: Optional[str]
-    # type: _subtree: List["_NodeBase"]
-    # type: _args: List[Arg]
-    # type: parent: Optional["_NodeBase"]
+    def __init__(
+        self,
+        *,
+        keyword: Optional[str] = None,
+        help_: str,
+        command: Optional[str] = None,
+        args: Optional[List[Arg]] = None,
+        subtree: Optional[List["_NodeBase"]] = None,
+    ):
+        self.keyword = keyword
+        self.help = help_
+        self.command = command
+        self.args = args if args else []
+        self.subtree = subtree if subtree else []
+        self.parent = None  # type: Optional[_NodeBase]
+        for x in subtree:
+            x.parent = self
 
-    def __init__(self, obj: Dict[str, typing.Any]):
-        required_fields = {"help"}
-        missing_fields = required_fields - set(obj)
-        if missing_fields:
-            raise ValueError("Missing fields: {}".format(", ".join(missing_fields)))
-        # Mutable defaults, initialised per-instance.
-        self._subtree = []
-        self._args = []
-        for k, v in obj.items():
-            setattr(self, k, v)
+    @classmethod
+    def from_dict(cls, data: Dict[str, typing.Any]) -> "_NodeBase":
+        kwargs = data.copy()
+        kwargs["help_"] = kwargs.pop("help")
+        kwargs["args"] = cls._process_args_field(kwargs.pop("args", []))
+        kwargs["subtree"] = cls._process_subtree_field(kwargs.pop("subtree", []))
+        return cls(**kwargs)
 
-    @property
-    def keyword(self) -> Optional[str]:
-        return None
+    @staticmethod
+    def _process_subtree_field(value: List[Dict[str, typing.Any]]) -> List["_NodeBase"]:
+        return [SubNode.from_dict(x) for x in value]
 
-    @property
-    def subtree(self) -> List["_NodeBase"]:
-        return self._subtree
-
-    @subtree.setter
-    def subtree(self, value: List[Dict]):
-        if type(value) is not list:
-            raise ValueError("Subtree must be a list of nodes")
-        self._subtree.clear()
-        for x in value:
-            node = SubNode(x)
-            node.parent = self
-            self._subtree.append(node)
-
-    @property
-    def args(self) -> List["Arg"]:
-        return self._args
-
-    @args.setter
-    def args(self, value: List):
-        if type(value) is not list:
-            raise ValueError("Args must be a list of args")
-        self._args = [Arg(x) for x in value]
+    @staticmethod
+    def _process_args_field(value: List[Dict[str, typing.Any]]) -> List[Arg]:
+        return [Arg.from_dict(x) for x in value]
 
 
 class RootNode(_NodeBase):
     """Root schema node."""
 
-    parent = None  # type: None
+    def __init__(self, **kwargs):
+        if "keyword" in kwargs:
+            raise TypeError("__init__() got an unexpected keyword argument 'keyword'")
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return "<RootNode>"
@@ -164,15 +119,9 @@ class RootNode(_NodeBase):
 class SubNode(_NodeBase):
     """Sub schema node."""
 
-    # type: _keyword: str
-    # type: parent: _NodeBase
-
-    def __init__(self, obj: Dict[str, typing.Any]):
-        required_fields = {"help", "keyword"}
-        missing_fields = required_fields - set(obj)
-        if missing_fields:
-            raise ValueError("Missing fields: {}".format(", ".join(missing_fields)))
-        super().__init__(obj)
+    def __init__(self, *, keyword: str, **kwargs):
+        kwargs["keyword"] = keyword
+        super().__init__(**kwargs)
 
     def __repr__(self):
         keywords = []
@@ -181,16 +130,6 @@ class SubNode(_NodeBase):
             keywords.insert(0, node.keyword)
             node = node.parent
         return "<SubNode({})>".format(".".join(keywords))
-
-    @property
-    def keyword(self) -> str:
-        return self._keyword
-
-    @keyword.setter
-    def keyword(self, value: str):
-        if type(value) is not str:
-            raise ValueError("Keyword is required and should be a string")
-        self._keyword = value
 
 
 # ------------------------------------------------------------------------------
@@ -206,7 +145,7 @@ class CLIParser:
         :param schema:
             The schema for the arg parsing.
         """
-        self._schema = RootNode(schema)
+        self._schema = RootNode.from_dict(schema)
         self._prog = prog
 
     def parse_args(

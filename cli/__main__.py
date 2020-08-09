@@ -167,7 +167,7 @@ def _check_python_capabilities(location: Optional[PathLike] = None):
                 stderr=sp.PIPE,
                 universal_newlines=True,
                 check=True,
-                timeout=3,
+                timeout=10,
             )
         except (FileNotFoundError, sp.CalledProcessError, sp.TimeoutExpired) as e:
             raise NoVenvPipError(
@@ -299,7 +299,6 @@ def make_venv(args):
     except NoVenvError:
         print("INFO: Creating virtual environment...")
         venv.create(_VENV_DIR, with_pip=True)
-        _check_venv(_VENV_DIR)
         print("INFO: Virtual environment successfully created")
 
     # Do pip install.
