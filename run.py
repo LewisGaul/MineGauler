@@ -2,9 +2,9 @@
 
 import sys
 
-import cli.__main__ as cli
-
 
 if __name__ == "__main__":
     sys.path.append("bootstrap")
+    import cli.__main__ as cli
+
     sys.exit(cli.main(sys.argv[1:]))
