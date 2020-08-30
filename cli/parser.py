@@ -192,7 +192,7 @@ class CLIParser:
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         # Use subparsers to represent the subnodes in displayed help.
-        if node.subtree and show_help:
+        if node.subtree:
             subparsers = parser.add_subparsers(title="submodes")
             subparsers.required = node.command is None
             for subnode in node.subtree:

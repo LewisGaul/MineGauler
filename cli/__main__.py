@@ -385,6 +385,7 @@ _COMMANDS = {
     "make-venv": make_venv,
     "run-tests": run_tests,
     "bump-version": lambda args: print("Not implemented"),
+    "start-server": lambda args: print("Not implemented"),
     "bot": run_bot_cli,
     "bot-add-player": add_bot_player,
     "bot-remove-player": remove_bot_player,
