@@ -80,6 +80,10 @@ def _msg_popup(
     popup = QMessageBox(parent)
     popup.setIcon(icon)
     popup.setWindowTitle(title)
+    
+    if GameState == READY:
+        msg == "Welcome to the Minegauler"   
+
     if msg:
         popup.setText(msg)
     popup.exec_()
@@ -117,6 +121,8 @@ class _BaseMainWindow(QMainWindow):
         self._setup_ui()
         # Keep track of all non-modal subwindows that are open.
         self._open_subwindows: Dict[str, QWidget] = {}
+        
+        
 
     # --------------------------------------------------------------------------
     # UI setup

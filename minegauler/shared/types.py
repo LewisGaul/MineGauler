@@ -314,6 +314,7 @@ class GameState(str, enum.Enum):
     ACTIVE = "ACTIVE"
     WON = "WON"
     LOST = "LOST"
+    
 
     def started(self) -> bool:
         return self is not self.READY
