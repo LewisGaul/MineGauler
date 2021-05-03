@@ -556,6 +556,9 @@ class MinegaulerGUI(
         )
         about_act.setShortcut("F1")
 
+        app_specific_feature = QAction("App Specific Feature", self)
+        self._help_menu.addAction(app_specific_feature)
+
     def _change_difficulty(self, diff: Difficulty) -> None:
         """
         Change the difficulty via the core controller.
